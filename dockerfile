@@ -1,38 +1,25 @@
-# Establece la imagen base de PHP con Apache
 FROM php:8.2-apache
 
-# Instala dependencias necesarias
+# 1. Instalar dependencias
 RUN apt-get update && apt-get install -y \
-    libzip-dev \
+    git \
     zip \
     unzip \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql zip
+    libzip-dev \
+    && docker-php-ext-install pdo_mysql zip
 
-# Habilita mod_rewrite de Apache
+# 2. Configurar Apache
 RUN a2enmod rewrite
+COPY .docker/apache.conf /etc/apache2/sites-available/000-default.conf
 
-# Copia el contenido del proyecto al directorio /var/www/html
-COPY . /var/www/html
-
-# Establece el directorio de trabajo
+# 3. Preparar directorio
 WORKDIR /var/www/html
+COPY . .
 
-# Instala Composer
+# 4. Instalar Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-# Instala dependencias de Composer (sin dev)
 RUN composer install --no-dev --optimize-autoloader
 
-# Establece permisos
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Expone el puerto 80
-EXPOSE 80
-
-# Comando para iniciar Apache
-CMD ["apache2-foreground"]
+# 5. Configurar permisos y variables
+RUN chown -R www-data:www-data storage bootstrap/cache
+RUN chmod -R 775 storage bootstrap/cache
